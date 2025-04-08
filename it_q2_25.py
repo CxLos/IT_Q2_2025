@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 from geopy.geocoders import Nominatim
 from folium.plugins import MousePosition
 import plotly.express as px
-import datetime
+from datetime import datetime
 import folium
 import os
 import sys
@@ -17,6 +17,13 @@ import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
 from dash.development.base_component import Component
+
+# Google Web Credentials
+import json
+import base64
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
 # 'data/~$bmhc_data_2024_cleaned.xlsx'
 # print('System Version:', sys.version)
 # -------------------------------------- DATA ------------------------------------------- #
@@ -24,20 +31,51 @@ from dash.development.base_component import Component
 current_dir = os.getcwd()
 current_file = os.path.basename(__file__)
 script_dir = os.path.dirname(os.path.abspath(__file__))
-data_path = 'data/IT_Responses.xlsx'
-file_path = os.path.join(script_dir, data_path)
-data = pd.read_excel(file_path)
+# data_path = 'data/IT_Responses.xlsx'
+# file_path = os.path.join(script_dir, data_path)
+# data = pd.read_excel(file_path)
+# df = data.copy()
+
+# Define the Google Sheets URL
+sheet_url = "https://docs.google.com/spreadsheets/d/1wNUS59k4D6mSq-ciF6PDkcIcrmr9uu867lqP4fM6VyA/edit?resourcekey=&gid=1758812507#gid=1758812507"
+
+# Define the scope
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+# Load credentials
+encoded_key = os.getenv("GOOGLE_CREDENTIALS")
+
+if encoded_key:
+    json_key = json.loads(base64.b64decode(encoded_key).decode("utf-8"))
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(json_key, scope)
+else:
+    creds_path = r"C:\Users\CxLos\OneDrive\Documents\BMHC\Data\bmhc-timesheet-4808d1347240.json"
+    if os.path.exists(creds_path):
+        creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
+    else:
+        raise FileNotFoundError("Service account JSON file not found and GOOGLE_CREDENTIALS is not set.")
+
+# Authorize and load the sheet
+client = gspread.authorize(creds)
+sheet = client.open_by_url(sheet_url)
+worksheet = sheet.get_worksheet(0)  # ✅ This grabs the first worksheet
+data = pd.DataFrame(worksheet.get_all_records())
 df = data.copy()
 
 # Trim leading and trailing whitespaces from column names
 df.columns = df.columns.str.strip()
 
+# Filtered df where 'Date of Activity:' is between January and March
+df['Date of Activity'] = pd.to_datetime(df['Date of Activity'], errors='coerce')
+df = df[(df['Date of Activity'].dt.month >= 1) & (df['Date of Activity'].dt.month <= 3)]
+df['Month'] = df['Date of Activity'].dt.month_name()
+
+df_1 = df[df['Month'] == 'January']
+df_2 = df[df['Month'] == 'February']
+df_3 = df[df['Month'] == 'March']
+
 # Define a discrete color sequence
 color_sequence = px.colors.qualitative.Plotly
-
-# Filtered df where 'Date:' is between Ocotber to December:
-df['Date:'] = pd.to_datetime(df['Date:'], errors='coerce')
-df = df[(df['Date:'] >= '2024-10-01') & (df['Date:'] <= '2024-12-31')]
 
 # print(df_m.head())
 # print('Total Marketing Events: ', len(df))
@@ -46,61 +84,24 @@ df = df[(df['Date:'] >= '2024-10-01') & (df['Date:'] <= '2024-12-31')]
 # print('Dtypes: \n', df.dtypes)
 # print('Info:', df.info())
 # print("Amount of duplicate rows:", df.duplicated().sum())
-
 # print('Current Directory:', current_dir)
 # print('Script Directory:', script_dir)
 # print('Path to data:',file_path)
 
 # ================================= Columns ================================= #
 
-# Column Names: 
-#  Index([
-#        'Timestamp', 
-#        'Which form are you filling out?',
-#        'Person completing this form:',
-#        'Was all required IT equipment purchased/ serviced this month?',
-#        'If answered "No" to above question, please specify why:',
-#        'Were all IT equipment support request addressed?',
-#        'Was phone system maintained and any support issues resolved within 48 hours?',
-#        'Was page speed optimization completed this month?',
-#        'Were any 404 errors identified and fixed?',
-#        'Were Updates made to the sitemap, internal linking, or robot.txt as needed?',
-#        'Was a Database / cloud backup completed?',
-#        'Did you complete any content or layout updates on the website?',
-#        'Please note any challenges, reasons for delays, or noteworthy outcomes from completed tasks:',
-#        'Person completing this form:.1', 'Was a Security Audit Conducted?',
-#        'If yes, were all issues addressed?',
-#        'Were any new Cybersecurity vulnerabilities identified?',
-#        'Did all Scheduled Cybersecurity training sessions occur this month?',
-#        'Please note any challenges, reasons for delays, or noteworthy outcomes from completed tasks:.1',
-#        'Person completing this form',
-#        'Were automated Workflows reviewed and adjusted as necessary?',
-#        'Were all planned email campaigns executed?',
-#        'Were A/B tests conducted on landing pages or customer journeys?',
-#        'Were any necessary SEO updates made this month?',
-#        'Were all monthly analytics reports generated and reviewed?',
-#        'Please note any challenges, reasons for delays, or noteworthy outcomes from completed tasks:.2',
-#        'Person completing this form:.2',
-#        'Did you attend or host all scheduled events this month?',
-#        'Were all new or potential community partnerships engaged as planned?',
-#        'Did you follow up with all attendees or participants from recent events?',
-#        'Were all planned outreach campaigns completed?',
-#        'Did you track social media engagement metrics?',
-#        'Was feedback from the community collected and reviewed?',
-#        'Please note any challenges, reasons for delays, or noteworthy outcomes from completed tasks:.3',
-#        'Person completing this form:.3',
-#        'Did all planned technical training sessions for staff occur?',
-#        'Did all scheduled employees complete the training?',
-#        'Please note any challenges, reasons for delays, or noteworthy outcomes from completed tasks:.4',
-#        'Person completing this form:.4',
-#        'Were all Weekly and Monthly reports completed and submitted on time?',
-#        'Was data collected accurately and reviewed for quality?',
-#        'Did you identify any actionable insights from this month's data?',
-#        'Please note any challenges, reasons for delays, or noteworthy outcomes from completed tasks:.5',
-#        'Date:', 
-# 'Briefly describe what tasks you worked on:',
-#        'How much time did you spend on these tasks? (minutes)'],
-#       dtype='object')
+it_columns =[
+    'Timestamp', 
+    'Date of Activity',
+    'Which form are you filling out?',
+    'Person submitting this form:',
+    'Activity Duration (hours):',
+    'How much time did you spend on these tasks? (minutes)',
+    'Please provide brief description of activity', 
+    'Email Address',
+    'Any recent or planned changes to BMHC lead services or programs?',
+    'Month'
+]
 
 # =============================== Missing Values ============================ #
 
@@ -109,94 +110,246 @@ df = df[(df['Date:'] >= '2024-10-01') & (df['Date:'] <= '2024-12-31')]
 
 # ============================== Data Preprocessing ========================== #
 
+df.rename(
+    columns={
+        "Activity Duration (hours):": "Hours",
+        "Which form are you filling out?": "Form Type",
+        "Person submitting this form:": "Person",
+    }, 
+inplace=True)
 
+# Get the reporting quarter:
+def get_custom_quarter(date_obj):
+    month = date_obj.month
+    if month in [10, 11, 12]:
+        return "Q1"  # October–December
+    elif month in [1, 2, 3]:
+        return "Q2"  # January–March
+    elif month in [4, 5, 6]:
+        return "Q3"  # April–June
+    elif month in [7, 8, 9]:
+        return "Q4"  # July–September
 
-# ========================= Filtered DataFrames ========================== #
+# Reporting Quarter (use last month of the quarter)
+report_date = datetime(2025, 3, 1)  # Example report date for Q2 (Jan–Mar)
+month = report_date.month
 
-# List of columns to include
-columns_to_include = [
-    'Person completing this form:.4',
-    'Were all Weekly and Monthly reports completed and submitted on time?',
-    'Was data collected accurately and reviewed for quality?',
-    "Did you identify any actionable insights from this month's data?",
-    'Please note any challenges, reasons for delays, or noteworthy outcomes from completed tasks:.5',
-    'Date:',
-    'Briefly describe what tasks you worked on:',
-    'How much time did you spend on these tasks? (minutes)'
+current_quarter = get_custom_quarter(report_date)
+print(f"Reporting Quarter: {current_quarter}")
+
+# Extract year from report_date:
+report_year = report_date.year
+
+# ============================== IT Events ========================== #
+
+it_events = len(df)
+# print('IT Events:', it_events)
+
+# ============================== IT Hours ========================== #
+
+hours_unique =[
+    4, 1, 5, 2, 0.5, 3, '', 80, 1.5
 ]
 
-columns_to_include_2 = [
-    'Date:',
-    'Person completing this form:.4',
-    'Briefly describe what tasks you worked on:',
-    'How much time did you spend on these tasks? (minutes)'
+# print("IT Hours unique before:", df['Hours'].unique().tolist())
+
+df['Hours'] = (df['Hours']
+    .astype(str)
+    .str.strip()
+    .replace({
+        '': 0,
+        })
+    )   
+
+df['Hours'] = pd.to_numeric(df['Hours'], errors='coerce')
+df['Hours'] = df['Hours'].fillna(0)
+# print("IT Hours unique after:", df['Hours'].unique().tolist())
+
+# Adjust the quarter calculation for custom quarters
+if month in [10, 11, 12]:
+    quarter = 1  # Q1: October–December
+elif month in [1, 2, 3]:
+    quarter = 2  # Q2: January–March
+elif month in [4, 5, 6]:
+    quarter = 3  # Q3: April–June
+elif month in [7, 8, 9]:
+    quarter = 4  # Q4: July–September
+    
+    # Calculate start and end month indices for the quarter
+all_months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
 ]
+start_month_idx = (quarter - 1) * 3
+month_order = all_months[start_month_idx:start_month_idx + 3]
 
-# Create a new DataFrame with only the specified columns
-df_data = df[columns_to_include]
-df_data2 = df[columns_to_include_2]
-# print(df_data.head(10))
+# Define a mapping for months to their corresponding quarter
+quarter_months = {
+    1: ['October', 'November', 'December'],  # Q1
+    2: ['January', 'February', 'March'],    # Q2
+    3: ['April', 'May', 'June'],            # Q3
+    4: ['July', 'August', 'September']      # Q4
+}
 
-# Total data events
-data_events = len(df_data)
+# Get the months for the current quarter
+months_in_quarter = quarter_months[quarter]
 
-# Total Data Hours
-total_data_hours = df_data['How much time did you spend on these tasks? (minutes)'].sum()/60
-total_data_hours = round(total_data_hours)
+# Calculate total hours for each month in the current quarter
+hours = []
+for month in months_in_quarter:
+    hours_in_month = df[df['Month'] == month]['Hours'].sum()
+    hours_in_month = round(hours_in_month)
+    hours.append(hours_in_month)
+    print(f'IT hours in {month}:', hours_in_month, 'hours')
 
+it_hours = df.groupby('Hours').size().reset_index(name='Count')
+it_hours = df['Hours'].sum()
+it_hours = round(it_hours)
+# print('Q2 IT hours:', it_hours, 'hours')
 
-# print(df_person.value_counts())
+# # Calculate total hours for each month
+# hours_1 = df[df['Month'] == 'January']['Hours'].sum()
+# hours_1 = round(hours_1)
+# print('IT hours in January:', hours_1, 'hours')
+
+# hours_2 = df[df['Month'] == 'February']['Hours'].sum()
+# hours_2 = round(hours_2)
+# print('IT hours in February:', hours_2, 'hours')
+
+# hours_3 = df[df['Month'] == 'March']['Hours'].sum()
+# hours_3 = round(hours_3)
+# print('IT hours in March:', hours_3, 'hours')
+
+# Create DataFrame for IT Hours
+df_hours = pd.DataFrame({
+    'Month': months_in_quarter,
+    'Hours': hours
+})
+
+# Bar chart for IT Hours
+hours_fig = px.bar(
+    df_hours,
+    x='Month',
+    y='Hours',
+    color="Month",
+    text='Hours',
+    title= f'{current_quarter} IT Hours by Month',
+    labels={
+        'Hours': 'Number of Hours',
+        'Month': 'Month'
+    },
+).update_layout(
+    title_x=0.5,
+    xaxis_title='Month',
+    yaxis_title='Hours',
+    height=900,  # Adjust graph height
+    font=dict(
+        family='Calibri',
+        size=17,
+        color='black'
+    ),
+    xaxis=dict(
+        tickfont=dict(size=18),  # Adjust font size for the month labels
+        tickangle=-25,  # Rotate x-axis labels for better readability
+        title=dict(
+            text=None,
+            font=dict(size=20),  # Font size for the title
+        ),
+    ),
+    yaxis=dict(
+        title=dict(
+            text='Number of Hours',
+            font=dict(size=22),  # Font size for the title
+        ),
+    ),
+    bargap=0.08,  # Reduce the space between bars
+).update_traces(
+    texttemplate='%{text}',  # Display the count value above bars
+    textfont=dict(size=20),  # Increase text size in each bar
+    textposition='auto',  # Automatically position text above bars
+    textangle=0, # Ensure text labels are horizontal
+    hovertemplate=(  # Custom hover template
+        '<b>Hours</b>: %{y}<extra></extra>'  
+    ),
+).add_annotation(
+    x='January',  # Specify the x-axis value
+    # y=df_hours.loc[df_hours['Month'] == 'January', 'Hours'].values[0] + 100,  # Position slightly above the bar
+    text='',  # Annotation text
+    showarrow=False,  # Hide the arrow
+    font=dict(size=30, color='red'),  # Customize font size and color
+    align='center',  # Center-align the text
+)
+
+# Pie Chart IT Hours
+hours_pie = px.pie(
+    df_hours,
+    names='Month',
+    values='Hours',
+    color='Month',
+    height=800
+).update_layout(
+    title=dict(
+        x=0.5,
+        text=f'{current_quarter} IT Hours by Month',  # Title text
+        font=dict(
+            size=35,  # Increase this value to make the title bigger
+            family='Calibri',  # Optional: specify font family
+            color='black'  # Optional: specify font color
+        ),
+    ),  # Center-align the title
+    margin=dict(
+        l=0,  # Left margin
+        r=0,  # Right margin
+        t=100,  # Top margin
+        b=0   # Bottom margin
+    )  # Add margins around the chart
+).update_traces(
+    rotation=180,  # Rotate pie chart 90 degrees counterclockwise
+    textfont=dict(size=19),  # Increase text size in each bar
+    textinfo='value+percent',
+    # texttemplate='<br>%{percent:.0%}',  # Format percentage as whole numbers
+    hovertemplate='<b>%{label}</b>: %{value}<extra></extra>'
+)
 
 # -------------------- Person completing this form DF ------------------- #
 
-# Strip whitespace and prepare the 'Person completing this form:.4' column
-df['Person completing this form:.4'] = df['Person completing this form:.4'].str.strip()
-
-# Create a new dataframe with relevant columns
-df_person = df[['Person completing this form:.4', 'Date:']].copy()
-
-# Extract the month name from the 'Date of Activity' column
-df_person['Month'] = df_person['Date:'].dt.month_name()
-
-# Filter for October, November, and December (Q4 months)
-df_person_q4 = df_person[df_person['Month'].isin(['October', 'November', 'December'])]
-
 # Group the data by 'Month' and 'Person completing this form:.4' and count occurrences
 df_person_counts = (
-    df_person_q4.groupby(['Month', 'Person completing this form:.4'], sort=False)
+    df.groupby(['Month', 'Person'], sort=False)
     .size()
     .reset_index(name='Count')
 )
 
-# Define the desired month order
-month_order = ['October', 'November', 'December']
+print('Person Counts: \n', df_person_counts.head())
 
 # Assign categorical ordering to the 'Month' column
 df_person_counts['Month'] = pd.Categorical(
     df_person_counts['Month'],
-    categories=month_order,
+    categories=months_in_quarter,
     ordered=True
 )
+
+# print("Mont Order:", month_order)
 
 # Create the grouped bar chart
 person_fig = px.bar(
     df_person_counts,
     x='Month',
     y='Count',
-    color='Person completing this form:.4',
+    color='Person',
     barmode='group',
     text='Count',
-    title='Person Completing Form',
+    title=f'{current_quarter} Form Submissions by Person',
     labels={
         'Count': 'Number of Submissions',
         'Month': 'Month',
-        'Person completing this form:.4': 'Person'
+        'Person': 'Person'
     }
 ).update_layout(
     title_x=0.5,
     xaxis_title='Month',
     yaxis_title='Count',
-    height=900,  # Adjust graph height
+    height=900,
     font=dict(
         family='Calibri',
         size=17,
@@ -205,24 +358,55 @@ person_fig = px.bar(
     xaxis=dict(
         tickmode='array',
         tickvals=df_person_counts['Month'].unique(),
-        tickangle=-35  # Rotate x-axis labels for better readability
+        tickangle=-35
     ),
     legend=dict(
-        title='Person',
-        orientation="v",  # Vertical legend
-        x=1.05,  # Position legend to the right
-        xanchor="left",  # Anchor legend to the left
-        y=1,  # Position legend at the top
-        yanchor="top"  # Anchor legend at the top
+        # title='Person',
+        orientation="v",
+        x=1.05,
+        xanchor="left",
+        y=1,
+        yanchor="top"
     ),
-    hovermode='x unified'  # Display unified hover info
+    hovermode='x unified'
 ).update_traces(
-    textposition='outside',  # Place text labels at the end of the bars
-    hovertemplate=(
-         '<br>'
-        '<b>Count: </b>%{y}<br>'  # Count
-    ),
-    customdata=df_person_counts['Person completing this form:.4'].values.tolist()
+    textposition='outside',
+    hovertemplate='<br><b>Count: </b>%{y}<br>',
+    customdata=df_person_counts['Person'].values.tolist()
+)
+
+# Group the data by "Person completing this form:" to count occurrences
+df_pf = df.groupby('Person').size().reset_index(name="Count")
+
+person_pie = px.pie(
+    df_pf,
+    names='Person',
+    values='Count',
+    color='Person',
+    height=800
+).update_layout(
+    title=dict(
+        x=0.5,
+        text= f'{current_quarter} People Completing Forms',  # Title text
+        font=dict(
+            size=35,  # Increase this value to make the title bigger
+            family='Calibri',  # Optional: specify font family
+            color='black'  # Optional: specify font color
+        ),
+    ),  # Center-align the title
+    margin=dict(
+        t=150,  # Adjust the top margin (increase to add more padding)
+        l=20,   # Optional: left margin
+        r=20,   # Optional: right margin
+        b=20    # Optional: bottom margin
+    )
+).update_traces(
+    rotation=0,  # Rotate pie chart 90 degrees counterclockwise
+    textfont=dict(size=19),  # Increase text size in each bar
+    textinfo='value+percent',
+    insidetextorientation='horizontal',  # Horizontal text orientation
+    texttemplate='%{value}<br>%{percent:.0%}',  # Format percentage as whole numbers
+    hovertemplate='<b>%{label}</b>: %{value}<extra></extra>'
 )
 
 # # ========================== DataFrame Table ========================== #
@@ -231,7 +415,7 @@ person_fig = px.bar(
 data_table = go.Figure(data=[go.Table(
     # columnwidth=[50, 50, 50],  # Adjust the width of the columns
     header=dict(
-        values=list(df_data2.columns),
+        values=list(df.columns),
         fill_color='paleturquoise',
         align='center',
         height=30,  # Adjust the height of the header cells
@@ -239,7 +423,7 @@ data_table = go.Figure(data=[go.Table(
         font=dict(size=12)  # Adjust font size
     ),
     cells=dict(
-        values=[df_data2[col] for col in df_data2.columns],
+        values=[df[col] for col in df.columns],
         fill_color='lavender',
         align='left',
         height=25,  # Adjust the height of the cells
@@ -267,17 +451,17 @@ app.layout = html.Div(
         className='divv', 
         children=[ 
           html.H1(
-              'BMHC IT Report Q1 2025', 
+              f'BMHC IT Report {current_quarter} {report_year}', 
               className='title'),
           html.H2( 
-              '10/01/2024 - 12/31/2024', 
+              '01/01/2025 - 03/31/2025', 
               className='title2'),
           html.Div(
               className='btn-box', 
               children=[
                   html.A(
                     'Repo',
-                    href='https://github.com/CxLos/IT_Q1_2025',
+                    href=f'https://github.com/CxLos/IT_{current_quarter}_2025',
                     className='btn'),
     ]),
   ]),    
@@ -316,7 +500,7 @@ html.Div(
             children=[
             html.Div(
                 className='high1',
-                children=['Total Data Events:']
+                children=[f'{current_quarter} IT Events']
             ),
             html.Div(
                 className='circle1',
@@ -326,7 +510,7 @@ html.Div(
                         children=[
                             html.H1(
                             className='high3',
-                            children=[data_events]
+                            children=[it_events]
                     ),
                         ]
                     )
@@ -340,7 +524,7 @@ html.Div(
             children=[
             html.Div(
                 className='high2',
-                children=['Total Data Hours:']
+                children=[f'{current_quarter} IT Hours']
             ),
             html.Div(
                 className='circle2',
@@ -350,7 +534,7 @@ html.Div(
                         children=[
                             html.H1(
                             className='high4',
-                            children=[total_data_hours]
+                            children=[it_hours]
                     ),
                         ]
                     )
@@ -359,6 +543,66 @@ html.Div(
             ),
             ]
         ),
+    ]
+),
+
+# ROW 
+html.Div(
+    className='row3',
+    children=[
+        html.Div(
+            className='graph0',
+            children=[
+                dcc.Graph(
+                    figure=hours_fig
+                )
+            ]
+        )
+    ]
+),
+
+# # ROW 
+html.Div(
+    className='row3',
+    children=[
+        html.Div(
+            className='graph0',
+            children=[
+                dcc.Graph(
+                    figure=hours_pie
+                )
+            ]
+        )
+    ]
+),
+
+# ROW 
+html.Div(
+    className='row3',
+    children=[
+        html.Div(
+            className='graph0',
+            children=[
+                dcc.Graph(
+                    figure=person_fig
+                )
+            ]
+        )
+    ]
+),
+
+# # ROW 
+html.Div(
+    className='row3',
+    children=[
+        html.Div(
+            className='graph0',
+            children=[
+                dcc.Graph(
+                    figure=person_pie
+                )
+            ]
+        )
     ]
 ),
 
@@ -399,21 +643,6 @@ html.Div(
         )
     ]
 ),
-
-# ROW 
-html.Div(
-    className='row3',
-    children=[
-        html.Div(
-            className='graph0',
-            children=[
-                dcc.Graph(
-                    figure=person_fig
-                )
-            ]
-        )
-    ]
-),
 ])
 
 print(f"Serving Flask app '{current_file}'! 🚀")
@@ -423,7 +652,7 @@ if __name__ == '__main__':
                 #    False)
 # =================================== Updated Database ================================= #
 
-# updated_path = 'data/bmhc_q4_2024_cleaned.xlsx'
+# updated_path = 'data/it_q2_2025.xlsx'
 # data_path = os.path.join(script_dir, updated_path)
 # df.to_excel(data_path, index=False)
 # print(f"DataFrame saved to {data_path}")
