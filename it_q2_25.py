@@ -207,19 +207,6 @@ it_hours = df['Hours'].sum()
 it_hours = round(it_hours)
 # print('Q2 IT hours:', it_hours, 'hours')
 
-# # Calculate total hours for each month
-# hours_1 = df[df['Month'] == 'January']['Hours'].sum()
-# hours_1 = round(hours_1)
-# print('IT hours in January:', hours_1, 'hours')
-
-# hours_2 = df[df['Month'] == 'February']['Hours'].sum()
-# hours_2 = round(hours_2)
-# print('IT hours in February:', hours_2, 'hours')
-
-# hours_3 = df[df['Month'] == 'March']['Hours'].sum()
-# hours_3 = round(hours_3)
-# print('IT hours in March:', hours_3, 'hours')
-
 # Create DataFrame for IT Hours
 df_hours = pd.DataFrame({
     'Month': months_in_quarter,
@@ -265,7 +252,7 @@ hours_fig = px.bar(
     bargap=0.08,  # Reduce the space between bars
 ).update_traces(
     texttemplate='%{text}',  # Display the count value above bars
-    textfont=dict(size=20),  # Increase text size in each bar
+    textfont=dict(size=25),  # Increase text size in each bar
     textposition='auto',  # Automatically position text above bars
     textangle=0, # Ensure text labels are horizontal
     hovertemplate=(  # Custom hover template
@@ -305,7 +292,7 @@ hours_pie = px.pie(
     )  # Add margins around the chart
 ).update_traces(
     rotation=180,  # Rotate pie chart 90 degrees counterclockwise
-    textfont=dict(size=19),  # Increase text size in each bar
+    textfont=dict(size=25),  # Increase text size in each bar
     textinfo='value+percent',
     # texttemplate='<br>%{percent:.0%}',  # Format percentage as whole numbers
     hovertemplate='<b>%{label}</b>: %{value}<extra></extra>'
@@ -361,7 +348,7 @@ person_fig = px.bar(
         tickangle=-35
     ),
     legend=dict(
-        # title='Person',
+        title='',
         orientation="v",
         x=1.05,
         xanchor="left",
@@ -370,6 +357,7 @@ person_fig = px.bar(
     ),
     hovermode='x unified'
 ).update_traces(
+        textfont=dict(size=25),  # Increase text size in each bar
     textposition='outside',
     hovertemplate='<br><b>Count: </b>%{y}<br>',
     customdata=df_person_counts['Person'].values.tolist()
@@ -402,7 +390,7 @@ person_pie = px.pie(
     )
 ).update_traces(
     rotation=0,  # Rotate pie chart 90 degrees counterclockwise
-    textfont=dict(size=19),  # Increase text size in each bar
+    textfont=dict(size=25),  # Increase text size in each bar
     textinfo='value+percent',
     insidetextorientation='horizontal',  # Horizontal text orientation
     texttemplate='%{value}<br>%{percent:.0%}',  # Format percentage as whole numbers
