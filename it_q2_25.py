@@ -307,7 +307,7 @@ df_person_counts = (
     .reset_index(name='Count')
 )
 
-print('Person Counts: \n', df_person_counts.head())
+# print('Person Counts: \n', df_person_counts.head())
 
 # Assign categorical ordering to the 'Month' column
 df_person_counts['Month'] = pd.Categorical(
@@ -636,11 +636,12 @@ html.Div(
 print(f"Serving Flask app '{current_file}'! 🚀")
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=
+                   True)
                 #    False)
 # =================================== Updated Database ================================= #
 
-# updated_path = 'data/it_q2_2025.xlsx'
+# updated_path = f'data/IT_{current_quarter}_{report_year}.xlsx'
 # data_path = os.path.join(script_dir, updated_path)
 # df.to_excel(data_path, index=False)
 # print(f"DataFrame saved to {data_path}")
