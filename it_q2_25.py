@@ -200,7 +200,7 @@ for month in months_in_quarter:
     hours_in_month = df[df['Month'] == month]['Hours'].sum()
     hours_in_month = round(hours_in_month)
     hours.append(hours_in_month)
-    print(f'IT hours in {month}:', hours_in_month, 'hours')
+    # print(f'IT hours in {month}:', hours_in_month, 'hours')
 
 it_hours = df.groupby('Hours').size().reset_index(name='Count')
 it_hours = df['Hours'].sum()
